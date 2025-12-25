@@ -1,6 +1,6 @@
-# zenly
+# zenly-app
 
-A new Flutter project.
+Zenly – Mental health app with mood tracking, chatbot & AR relaxation
 
 ## Getting Started
 
