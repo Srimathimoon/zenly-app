@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-const String openRouterApiKey = "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";
+const String proxyUrl = "https://zenly-backend-awos.onrender.com/chatProxy";
+// For local testing: "http://localhost:3000/chatProxy"
 
 void main() {
   runApp(const MaterialApp(
@@ -29,7 +30,6 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
   bool _isTyping = false;
 
   late AnimationController _breathingController;
-
   List<String> _suggestions = ["I'm stressed", "I feel lonely", "I'm okay"];
 
   @override
@@ -62,7 +62,6 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
   }
 
   // ================= THEME =================
-
   Color _getThemeColor() {
     switch (_mood) {
       case 'happy':
@@ -78,18 +77,13 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
     }
   }
 
-  // ================= AI =================
-
-  Future<String> _callOpenRouter(String text) async {
+  // ================= BACKEND =================
+  Future<String> _callBackend(String text) async {
     try {
       final response = await http.post(
-        Uri.parse("https://openrouter.ai/api/v1/chat/completions"),
-        headers: {
-          "Authorization": "Bearer $openRouterApiKey",
-          "Content-Type": "application/json",
-        },
+        Uri.parse(proxyUrl),
+        headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "model": "gpt-4o-mini",
           "messages": [
             {
               "role": "system",
@@ -102,31 +96,29 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
         }),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data["choices"][0]["message"]["content"];
-      }
-      return "I'm here with you 🌿.";
+      if (response.statusCode != 200) return "I’m here with you 🌿.";
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final choice = data["choices"]?[0];
+      final content =
+          choice?["message"]?["content"] ?? choice?["text"] ?? data["output_text"];
+
+      return content ?? "I’m here with you 🌿.";
     } catch (_) {
-      return "I'm still here 💙. Talk to me.";
+      return "I’m here with you 🌿.";
     }
   }
 
   // ================= CORE =================
-
   void _addBotMessage(String text, {bool system = false}) {
-    _messages.add({
-      "sender": "bot",
-      "text": text,
-      "system": system,
-    });
+    _messages.add({"sender": "bot", "text": text, "system": system});
   }
 
   void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
-
     final lower = text.toLowerCase();
 
+    // Stop breathing commands
     if (lower == "done" || lower == "stop breathing") {
       _stopBreathing();
       return;
@@ -136,11 +128,10 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
       _messages.add({"sender": "user", "text": text});
       _isTyping = true;
     });
-
     _controller.clear();
     _scrollToBottom();
 
-    // 🚨 CRISIS (RULE-BASED LEFT)
+    // CRISIS detection
     if (lower.contains("die") ||
         lower.contains("kill") ||
         lower.contains("suicide")) {
@@ -159,7 +150,7 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
       return;
     }
 
-    // 😟 STRESS → BREATHING (RULE-BASED LEFT)
+    // STRESS detection
     if (lower.contains("stress") || lower.contains("anxious")) {
       setState(() {
         _mode = 'breathing';
@@ -176,17 +167,15 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
       return;
     }
 
-    // MOOD
+    // Mood adjustments
     if (lower.contains("happy")) _mood = 'happy';
     if (lower.contains("sad") || lower.contains("lonely")) _mood = 'sad';
 
-    final reply = await _callOpenRouter(text);
-
+    final reply = await _callBackend(text);
     setState(() {
       _isTyping = false;
       _addBotMessage(reply);
     });
-
     _scrollToBottom();
   }
 
@@ -212,7 +201,6 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
   }
 
   // ================= UI =================
-
   @override
   Widget build(BuildContext context) {
     final theme = _getThemeColor();
@@ -244,19 +232,19 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
                   },
                 ),
               ),
-
               if (!_isTyping)
                 Wrap(
                   spacing: 8,
                   children: _suggestions
-                      .map((s) => ActionChip(
-                    label: Text(s),
-                    onPressed: () => _sendMessage(s),
-                    backgroundColor: theme.withOpacity(0.15),
-                  ))
+                      .map(
+                        (s) => ActionChip(
+                      label: Text(s),
+                      onPressed: () => _sendMessage(s),
+                      backgroundColor: theme.withOpacity(0.15),
+                    ),
+                  )
                       .toList(),
                 ),
-
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Row(
@@ -266,7 +254,8 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
                         controller: _controller,
                         onSubmitted: _sendMessage,
                         decoration: const InputDecoration(
-                            hintText: "Talk to Zenly..."),
+                          hintText: "Talk to Zenly...",
+                        ),
                       ),
                     ),
                     IconButton(
@@ -278,15 +267,13 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
               ),
             ],
           ),
-
           if (_mode == 'breathing') Center(child: _breathingWidget(theme)),
         ],
       ),
     );
   }
 
-  Widget _bubble(String text, bool user, Color theme,
-      {bool system = false}) {
+  Widget _bubble(String text, bool user, Color theme, {bool system = false}) {
     return Align(
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -311,13 +298,11 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
     );
   }
 
-  // 🌈 BREATHING
   Widget _breathingWidget(Color theme) {
     return AnimatedBuilder(
       animation: _breathingController,
       builder: (_, __) {
-        final inhale =
-            _breathingController.status == AnimationStatus.forward;
+        final inhale = _breathingController.status == AnimationStatus.forward;
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -330,10 +315,7 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      theme.withOpacity(0.9),
-                      theme.withOpacity(0.3),
-                    ],
+                    colors: [theme.withOpacity(0.9), theme.withOpacity(0.3)],
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -360,3 +342,4 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen>
     );
   }
 }
+
