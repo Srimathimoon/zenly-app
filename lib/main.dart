@@ -3,10 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'mood_screen.dart';
 import 'chat.dart';
-
-
-
-
+import 'game.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -23,39 +20,43 @@ Future<void> main() async {
   runApp(const ZenlyApp());
 }
 
-// -------------------- App Root --------------------
 class ZenlyApp extends StatelessWidget {
   const ZenlyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Zenly',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF7FAF9),
-        primaryColor: const Color(0xFF4CAF50),
+        scaffoldBackgroundColor: const Color(0xFFF5F7F6), // soft off-white
+        primaryColor: const Color(0xFF4A90E2), // calm blue
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          primary: const Color(0xFF4A90E2),
+          secondary: const Color(0xFF50E3C2), // soothing teal
+        ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: Color(0xFF4A90E2),
           foregroundColor: Colors.white,
-          elevation: 0,
+          elevation: 1,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF4CAF50),
+            backgroundColor: const Color(0xFF4A90E2),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
             ),
             textStyle: const TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
           ),
+        ),
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(fontWeight: FontWeight.w700),
+          bodyMedium: TextStyle(fontSize: 16),
         ),
       ),
       home: const SplashScreen(),
@@ -63,7 +64,6 @@ class ZenlyApp extends StatelessWidget {
   }
 }
 
-// -------------------- Splash Screen --------------------
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -75,10 +75,10 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     });
@@ -86,22 +86,33 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Center(
-        child: Text(
-          'Zenly 🌿',
-          style: TextStyle(
-            fontSize: 34,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2F3E3A),
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/zenly_logo.png',
+              width: 140,
+              height: 140,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              ' Zenly ',
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2F3E3A),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// -------------------- Login Screen --------------------
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -113,12 +124,14 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _loginAnonymously() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       await FirebaseAuth.instance.signInAnonymously();
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } catch (e) {
@@ -128,7 +141,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -149,7 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// -------------------- Home Screen --------------------
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -159,49 +173,42 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Zenly Home')),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Welcome to Zenly 🌱',
+              'Welcome to Zenly ',
               style: TextStyle(
                 fontSize: 22,
                 color: Color(0xFF2F3E3A),
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 30),
-
+            const SizedBox(height: 36),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const MoodScreen(),
-                  ),
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MoodScreen()),
                 );
               },
               child: const Text('Mood Tracker'),
             ),
-
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ChatScreen(),
-                  ),
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AdvancedChatScreen()),
                 );
               },
               child: const Text('Chat Support'),
             ),
-
-
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {},
-              child: const Text('AR Relaxation'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ZenGardenScreen()),
+                );
+              },
+              child: const Text('Zen Garden'),
             ),
           ],
         ),
